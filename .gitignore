@@ -1,0 +1,18 @@
+# Ambiente virtual
+venv/
+.venv/
+
+# Arquivos baixados (uso pessoal, não versionar)
+downloads/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.env

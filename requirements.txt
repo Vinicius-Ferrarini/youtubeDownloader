@@ -1,0 +1,9 @@
+# Dependências Python. Instale com: pip install -r requirements.txt
+#
+# ffmpeg NÃO está aqui: é um binário externo do sistema, instalado à parte
+# (veja USAGE.md).
+
+fastapi
+uvicorn[standard]
+yt-dlp
+python-multipart

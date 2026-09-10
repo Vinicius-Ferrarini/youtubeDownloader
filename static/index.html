@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Baixador de Áudio/Vídeo do YouTube</title>
+  <style>
+    :root {
+      --bg: #0f1116;
+      --card: #181b23;
+      --border: #2a2f3a;
+      --text: #e7e9ee;
+      --muted: #9aa3b2;
+      --accent: #ff4d4d;
+      --accent-hover: #ff6666;
+      --ok: #35c46b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+    main { width: 100%; max-width: 560px; }
+    h1 { font-size: 1.35rem; margin: 0 0 4px; }
+    .sub { color: var(--muted); margin: 0 0 24px; font-size: .9rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    label { display: block; font-size: .82rem; color: var(--muted); margin-bottom: 6px; }
+    input[type=text], select {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0f1218;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: .95rem;
+    }
+    input[type=text]:focus, select:focus { outline: 2px solid var(--accent); border-color: transparent; }
+    .row { display: flex; gap: 12px; }
+    .row > div { flex: 1; }
+    button {
+      width: 100%;
+      padding: 11px 16px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: .95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    button:hover:not(:disabled) { background: var(--accent-hover); }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    button.secondary { background: #262b36; }
+    button.secondary:hover:not(:disabled) { background: #313846; }
+    .mt { margin-top: 12px; }
+    .hidden { display: none; }
+    .info-grid { display: flex; gap: 14px; }
+    .info-grid img {
+      width: 160px; height: 90px; object-fit: cover; border-radius: 8px;
+      background: #0f1218; flex-shrink: 0;
+    }
+    .info-meta { min-width: 0; }
+    .info-meta .t { font-weight: 600; margin-bottom: 4px; word-break: break-word; }
+    .info-meta .m { color: var(--muted); font-size: .85rem; }
+    .msg { padding: 10px 12px; border-radius: 8px; font-size: .88rem; margin-top: 12px; }
+    .msg.error { background: #3a1b1b; border: 1px solid #6b2a2a; color: #ffb4b4; }
+    .msg.ok { background: #16321f; border: 1px solid #2c6b41; color: #a9e9c1; }
+    .spinner {
+      display: inline-block; width: 15px; height: 15px; vertical-align: -2px;
+      border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+      border-radius: 50%; animation: spin .7s linear infinite; margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 460px) {
+      .info-grid { flex-direction: column; }
+      .info-grid img { width: 100%; height: auto; aspect-ratio: 16/9; }
+      .row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Baixador de Áudio/Vídeo do YouTube</h1>
+    <p class="sub">Uso pessoal · roda só na sua máquina</p>
+
+    <div class="card">
+      <label for="url">Link do YouTube</label>
+      <input type="text" id="url" placeholder="https://www.youtube.com/watch?v=..."
+             autocomplete="off" spellcheck="false" />
+      <button id="btnCheck" class="mt">Verificar</button>
+      <div id="checkMsg"></div>
+    </div>
+
+    <div class="card hidden" id="infoCard">
+      <div class="info-grid">
+        <img id="thumb" alt="capa do vídeo" />
+        <div class="info-meta">
+          <div class="t" id="title"></div>
+          <div class="m" id="channel"></div>
+          <div class="m" id="duration"></div>
+          <div class="m" id="size"></div>
+        </div>
+      </div>
+
+      <div class="row mt">
+        <div>
+          <label for="format">Formato</label>
+          <select id="format">
+            <option value="mp3">MP3 (áudio)</option>
+            <option value="mp4">MP4 (vídeo, até 1080p)</option>
+          </select>
+        </div>
+        <div>
+          <label for="quality">Qualidade</label>
+          <select id="quality">
+            <option value="high">Alta (320 kbps)</option>
+            <option value="medium">Média (192 kbps)</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="btnDownload" class="mt">Baixar</button>
+      <div id="downloadMsg"></div>
+    </div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const urlInput = $("url");
+    const btnCheck = $("btnCheck");
+    const btnDownload = $("btnDownload");
+    const infoCard = $("infoCard");
+    const formatSel = $("format");
+    const qualitySel = $("quality");
+
+    let lastInfo = null;
+
+    function showMsg(el, kind, html) {
+      el.className = "msg " + kind;
+      el.innerHTML = html;
+    }
+    function clearMsg(el) { el.className = ""; el.innerHTML = ""; }
+
+    async function parseError(res) {
+      try {
+        const data = await res.json();
+        if (data && data.detail) return data.detail;
+      } catch (_) {}
+      return "Erro inesperado (HTTP " + res.status + ").";
+    }
+
+    function estimatedSizeLabel() {
+      if (!lastInfo) return "";
+      const s = lastInfo.estimated_size_mb || {};
+      if (formatSel.value === "mp4") {
+        return s.mp4 ? `~${s.mp4} MB` : "tamanho desconhecido";
+      }
+      const mb = qualitySel.value === "high" ? s.mp3_high : s.mp3_medium;
+      return mb ? `~${mb} MB` : "tamanho desconhecido";
+    }
+
+    function refreshSizeLine() {
+      if (!lastInfo) return;
+      $("size").textContent = "Tamanho estimado: " + estimatedSizeLabel();
+      // Qualidade só faz sentido para MP3.
+      qualitySel.disabled = formatSel.value === "mp4";
+    }
+
+    formatSel.addEventListener("change", refreshSizeLine);
+    qualitySel.addEventListener("change", refreshSizeLine);
+
+    btnCheck.addEventListener("click", checkInfo);
+    urlInput.addEventListener("keydown", (e) => { if (e.key === "Enter") checkInfo(); });
+
+    async function checkInfo() {
+      const url = urlInput.value.trim();
+      clearMsg($("checkMsg"));
+      clearMsg($("downloadMsg"));
+      if (!url) { showMsg($("checkMsg"), "error", "Cole um link primeiro."); return; }
+
+      btnCheck.disabled = true;
+      btnCheck.innerHTML = '<span class="spinner"></span>Verificando...';
+      try {
+        const res = await fetch("/info", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        });
+        if (!res.ok) {
+          infoCard.classList.add("hidden");
+          showMsg($("checkMsg"), "error", await parseError(res));
+          return;
+        }
+        lastInfo = await res.json();
+        $("thumb").src = lastInfo.thumbnail || "";
+        $("title").textContent = lastInfo.title;
+        $("channel").textContent = "Canal: " + lastInfo.channel;
+        $("duration").textContent = "Duração: " + (lastInfo.duration_string || "?");
+        refreshSizeLine();
+        infoCard.classList.remove("hidden");
+      } catch (err) {
+        infoCard.classList.add("hidden");
+        showMsg($("checkMsg"), "error", "Falha de conexão com o servidor local.");
+      } finally {
+        btnCheck.disabled = false;
+        btnCheck.textContent = "Verificar";
+      }
+    }
+
+    function filenameFromDisposition(res, fallback) {
+      const cd = res.headers.get("Content-Disposition") || "";
+      let m = cd.match(/filename\*=(?:UTF-8'')?([^;]+)/i);
+      if (m) { try { return decodeURIComponent(m[1].replace(/"/g, "")); } catch (_) {} }
+      m = cd.match(/filename="?([^"]+)"?/i);
+      if (m) return m[1];
+      return fallback;
+    }
+
+    btnDownload.addEventListener("click", async () => {
+      const url = urlInput.value.trim();
+      if (!url) return;
+      clearMsg($("downloadMsg"));
+
+      const started = Date.now();
+      btnDownload.disabled = true;
+      btnCheck.disabled = true;
+      const timer = setInterval(() => {
+        const s = Math.floor((Date.now() - started) / 1000);
+        btnDownload.innerHTML =
+          '<span class="spinner"></span>Processando... ' + s + 's';
+      }, 250);
+
+      try {
+        const res = await fetch("/download", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url,
+            format: formatSel.value,
+            quality: qualitySel.value,
+          }),
+        });
+        if (!res.ok) {
+          showMsg($("downloadMsg"), "error", await parseError(res));
+          return;
+        }
+        const blob = await res.blob();
+        const name = filenameFromDisposition(
+          res, "download." + formatSel.value
+        );
+        const objUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = objUrl;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
+
+        const mb = (blob.size / (1024 * 1024)).toFixed(1);
+        showMsg(
+          $("downloadMsg"), "ok",
+          `Pronto! <b>${name}</b> (${mb} MB) foi baixado e também salvo em ` +
+          `<code>./downloads</code>.`
+        );
+      } catch (err) {
+        showMsg(
+          $("downloadMsg"), "error",
+          "Falha ao baixar. O servidor local ainda está rodando?"
+        );
+      } finally {
+        clearInterval(timer);
+        btnDownload.disabled = false;
+        btnCheck.disabled = false;
+        btnDownload.textContent = "Baixar";
+      }
+    });
+  </script>
+</body>
+</html>
