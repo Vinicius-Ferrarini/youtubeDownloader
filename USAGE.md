@@ -97,7 +97,7 @@ volte ao passo 1 dos pré-requisitos.
 ## 6. Estrutura
 
 ```
-yt-audio-downloader/
+youtubeDownloader/
 ├── main.py            # app FastAPI: serve o frontend e as rotas /info e /download
 ├── downloader.py      # lógica de yt-dlp + ffmpeg (metadados, download, conversão)
 ├── static/

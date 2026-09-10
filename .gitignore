@@ -9,6 +9,10 @@ downloads/
 __pycache__/
 *.py[cod]
 *.egg-info/
+.pytest_cache/
+
+# Logs
+*.log
 
 # Editores / SO
 .vscode/
