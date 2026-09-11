@@ -1,8 +1,10 @@
-# YouTube Downloader
+# ⬇️ YouTube Downloader
 
 Ferramenta pessoal para baixar áudio (MP3) ou vídeo (MP4) do YouTube, com interface web simples: cole o link, veja a capa/título/duração/tamanho estimado, escolha o formato e baixe.
 
 Feita para uso próprio/familiar, em baixo volume — **não é um serviço público**.
+
+![Captura de tela do YouTube Downloader](capa.png)
 
 ## ⚠️ Aviso importante
 
